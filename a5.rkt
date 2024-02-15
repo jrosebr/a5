@@ -44,10 +44,11 @@
        `(closure ,x ,body ,env))
       
       (`(,rator ,rand)
-       (let ((closure (value-of-ds rator env)))
-         (apply-clos-ds closure rand env))))))
+       (let ((closure (value-of-ds rator env))
+             (arg (value-of-ds rand env)))
+         (apply-clos-ds closure arg env))))))
 
-(trace value-of-ds)
+;(trace value-of-ds)
 
 
 (define empty-env-ds
@@ -73,4 +74,41 @@
   (λ (closure rand env)
     (match closure
       (`(closure ,x ,body ,closure-env)
-       (value-of-ds body (extend-env-ds x rand closure-env))))))
+       (value-of-ds body (extend-env-ds x rand env))))))
+
+;Problem 2
+
+;val-of-cbv
+(define value-of-cbv
+  (λ (e env)
+    (match e
+      (`,y #:when (symbol? y) (unbox (env y)))
+      
+      (`,n #:when (number? n) n)
+      
+      (`(+ ,nexpr1 ,nexpr2)
+       (+ (value-of-cbv nexpr1 env)
+          (value-of-cbv nexpr2 env)))
+      
+      (`(begin2 ,exp1 ,exp2)
+       (begin
+         (value-of-cbv exp1 env)
+         (value-of-cbv exp2 env)))
+      
+      (`(set! ,x ,expr)
+       #:when (symbol? x)
+       (set-box! (env x) (value-of-cbv expr env)))
+      
+      (`(λ (,x) ,body)
+       #:when (symbol? x)
+       (λ (arg)
+         ; We also need to extend the environment
+         (value-of-cbv body (λ (y)
+                              (cond
+                                ((eqv? y x) arg)
+                                (else (env y)))))))
+      
+      (`(,rator ,rand)
+       ((value-of-cbv rator env)
+        (box (value-of-cbv rand env)))))))
+
